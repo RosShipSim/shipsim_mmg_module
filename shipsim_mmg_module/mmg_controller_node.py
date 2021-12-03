@@ -7,7 +7,7 @@ import rclpy
 from rclpy.node import Node
 
 from PyQt5.QtCore import QThread, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QDialog, QWidget 
+from PyQt5.QtWidgets import QApplication, QDialog, QWidget
 
 from shipsim_msgs_module.msg import MMGControl
 
@@ -17,7 +17,7 @@ from shipsim_mmg_module.ShipControllerMMG import Ui_ShipControllerMMG
 class MmgControllerNode(Node):
     """ControllerNode."""
 
-    def __init__(self, timer_period=1.0):
+    def __init__(self):
         """init."""
         super().__init__("ship_controller")
         self.publisher_ = self.create_publisher(MMGControl, "ship1/control", 10)
@@ -64,7 +64,7 @@ class ControllerUi(QDialog):
     def __init__(self, parent=None):
         """init."""
         super(ControllerUi, self).__init__(parent)
-        centralWidget = QWidget(self)          
+        centralWidget = QWidget(self)
         self.ui = Ui_ShipControllerMMG()
         self.ui.setupUi(self)
         self.sampling_freq = float(self.ui.samplingFreqEdit.text())
