@@ -19,8 +19,12 @@ class MmgControllerNode(Node):
 
     def __init__(self):
         """init."""
-        super().__init__("ship_controller")
-        self.publisher_ = self.create_publisher(MMGControl, "ship1/control", 10)
+        super().__init__("controller", namespace="ship1")
+        self.declare_parameter("publish_address", "/ship1/cmd_control")
+        publish_address = (
+            self.get_parameter("publish_address").get_parameter_value().string_value
+        )
+        self.publisher = self.create_publisher(MMGControl, publish_address, 10)
 
 
 class ControllerNodeWorker(QThread):
@@ -46,7 +50,7 @@ class ControllerNodeWorker(QThread):
         while rclpy.ok():
             rclpy.spin_once(self.node)
 
-            self.node.publisher_.publish(self.control_msg)
+            self.node.publisher.publish(self.control_msg)
 
             self.node.get_logger().info(
                 'Publishing: "%s", "%s"'
