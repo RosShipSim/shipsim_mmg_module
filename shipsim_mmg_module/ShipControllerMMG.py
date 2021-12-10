@@ -97,7 +97,7 @@ class Ui_ShipControllerMMG(object):
         ShipControllerMMG.setWindowTitle(_translate("ShipControllerMMG", "MainWindow"))
         self.startButton.setText(_translate("ShipControllerMMG", "START"))
         self.stopButton.setText(_translate("ShipControllerMMG", "STOP"))
-        self.propellerLabel.setText(_translate("ShipControllerMMG", "Propeller Shaft Revolution [rpm]"))
+        self.propellerLabel.setText(_translate("ShipControllerMMG", "Propeller Shaft Revolution [rps]"))
         self.rudderLabel0.setText(_translate("ShipControllerMMG", "Rudder Angle [deg]"))
         self.freqLabel.setText(_translate("ShipControllerMMG", "samling freq [1/s]"))
         self.quitButton.setText(_translate("ShipControllerMMG", "QUIT"))

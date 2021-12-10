@@ -16,7 +16,7 @@ class MmgModelNode(Node):
 
     cmd_vel_Twist = Twist()
 
-    rpm = 0.0
+    rps = 0.0
     rudder_angle_degree = 0.0
 
     def __init__(
@@ -143,14 +143,14 @@ class MmgModelNode(Node):
             u_now,
             v_now,
             r_now,
-            self.rpm,
+            self.rps,
             self.rudder_angle_degree,
             self.delta_time,
         )
         self.pub_cmd_vel.publish(self.cmd_vel_Twist)
         self.get_logger().info('Publishing: "%s"' % self.cmd_vel_Twist)
 
-    def get_twist_from_MMG(self, u_now, v_now, r_now, rpm, rudder_angle_degree, delta_time):
+    def get_twist_from_MMG(self, u_now, v_now, r_now, rps, rudder_angle_degree, delta_time):
         twist = Twist()
         rudder_angle = rudder_angle_degree * np.pi / 180.0
         ρ = 1.025
@@ -173,11 +173,11 @@ class MmgModelNode(Node):
         
         v_dash = 0.0 if U==0.0 else v_now/U #無次元化された横方向速度
         r_dash = 0.0 if U==0.0 else r_now*self.L/U #無次元化された回頭角速度
-        J = 0.0 if rpm==0.0 else (1-self.wpo)*u_now/(rpm*self.Dp) #前進常数
+        J = 0.0 if rps==0.0 else (1-self.wpo)*u_now/(rps*self.Dp) #前進常数
         K_T = self.k0+self.k1*J+self.k2*J**2 #スラスト係数kx
         v_R = U*self.γR*(β-self.lr_*r_dash) #舵に流入する横方向速度成分
         #v_R_ = self.γR*(β-self.lr_*r_dash) #無次元化
-        u_R = np.sqrt(η*(self.κ*self.ϵ*8.0*self.k0*rpm**2*self.Dp**4/np.pi)**2) if J==0.0 else u_now*(1-self.wpo)*self.ϵ*np.sqrt(η*(1.0+self.κ*(np.sqrt(1.0+8.0*K_T/(np.pi*J**2))-1))**2+(1-η)) #舵に流入する前後方向速度成分
+        u_R = np.sqrt(η*(self.κ*self.ϵ*8.0*self.k0*rps**2*self.Dp**4/np.pi)**2) if J==0.0 else u_now*(1-self.wpo)*self.ϵ*np.sqrt(η*(1.0+self.κ*(np.sqrt(1.0+8.0*K_T/(np.pi*J**2))-1))**2+(1-η)) #舵に流入する前後方向速度成分
         #u_R_ = (1-self.wpo)**2*self.ϵ**2*(η*(1.0+self.κ*(np.sqrt(1.0+8.0*K_T/(np.pi*J**2))-1))**2+(1-η)) #無次元化
         U_R = np.sqrt(u_R**2+v_R**2) #舵への流入速度
         α_R = rudder_angle - np.arctan2(v_R,u_R) #舵への流入角度
@@ -189,7 +189,7 @@ class MmgModelNode(Node):
         X_H = 0.5*ρ*self.L*self.d*(U**2)*(-(self.R_0)+self.X_vv*v_dash**2+self.X_vr*v_dash*r_dash+self.X_rr*r_dash**2+self.X_vvvv*v_dash**4)
         #X_H = 0.5*ρ*self.L*self.d*(U**2)*(-R_0+X_vv*v_dash**2+(X_vr+m_+self.my_)*v_dash*r_dash+(X_rr+xG_*m_)*r_dash**2+X_vvvv*v_dash**4) #付加質量で調整
         X_R = -(1-self.tR)*F_N*np.sin(rudder_angle)
-        X_P = (1-self.tP)*ρ*K_T*rpm**2*self.Dp**4
+        X_P = (1-self.tP)*ρ*K_T*rps**2*self.Dp**4
         
         Y_H = 0.5*ρ*self.L*self.d*(U**2)*(self.Y_v*v_dash+self.Y_r*r_dash+self.Y_vvr*(v_dash**2)*r_dash+self.Y_vrr*v_dash*(r_dash**2)+self.Y_vvv*(v_dash**3)+self.Y_rrr*(r_dash**3))
         #Y_H = 0.5*ρ*self.L*self.d*(U**2)*(Y_v*v_dash+(Y_r-m_-self.mx_)*r_dash+Y_vvr*(v_dash**2)*r_dash+Y_vrr*v_dash*(r_dash**2)+Y_vvv*(v_dash**3)+Y_rrr*(r_dash**3)) #付加質量で調整
@@ -216,11 +216,11 @@ class MmgModelNode(Node):
     def listener_callback(self, msg):
         """listener_callback."""
         self.get_logger().info(
-            'MMG_model_node heard: rpm="%s", \
+            'MMG_model_node heard: rps="%s", \
                 rudder_angle="%s"'
-            % (msg.rpm, msg.rudder_angle_degree)
+            % (msg.rps, msg.rudder_angle_degree)
         )
-        self.rpm = msg.rpm
+        self.rps = msg.rps
         self.rudder_angle_degree = msg.rudder_angle_degree
 
 

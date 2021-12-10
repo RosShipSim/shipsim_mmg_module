@@ -50,7 +50,7 @@ class ControllerNodeWorker(QThread):
 
             self.node.get_logger().info(
                 'Publishing: "%s", "%s"'
-                % (self.control_msg.rpm, self.control_msg.rudder_angle_degree)
+                % (self.control_msg.rps, self.control_msg.rudder_angle_degree)
             )
 
             # self.control_msg = MMGControl()
@@ -72,7 +72,7 @@ class ControllerUi(QDialog):
     def clicked_start(self):
         """clicked start button"""
         control_msg = self.worker_thread.control_msg
-        control_msg.rpm = float(self.ui.propellerSlider.value())
+        control_msg.rps = float(self.ui.propellerSlider.value())
         self.worker_thread.rate = float(self.ui.samplingFreqEdit.text())
         self.ui.samplingFreqEdit.setEnabled(False)
         control_msg.rudder_angle_degree = float(self.ui.rudderDial.value())
@@ -86,9 +86,9 @@ class ControllerUi(QDialog):
 
     def change_shaft_revolution(self):
         """change shaft revolution slider"""
-        rpm = self.ui.propellerSlider.value()
+        rps = self.ui.propellerSlider.value()
         control_msg = self.worker_thread.control_msg
-        control_msg.rpm = float(rpm)
+        control_msg.rps = float(rps)
 
     def clicked_stop(self):
         """clicked stop button"""
