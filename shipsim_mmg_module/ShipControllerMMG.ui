@@ -87,7 +87,7 @@
      </rect>
     </property>
     <property name="text">
-     <string>Propeller Shaft Revolution [rpm]</string>
+     <string>Propeller Shaft Revolution [rps]</string>
     </property>
    </widget>
    <widget class="QLabel" name="rudderLabel0">
