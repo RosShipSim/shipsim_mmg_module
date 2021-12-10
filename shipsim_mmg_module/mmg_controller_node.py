@@ -7,7 +7,7 @@ import rclpy
 from rclpy.node import Node
 
 from PyQt5.QtCore import QThread, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QDialog, QWidget 
+from PyQt5.QtWidgets import QApplication, QDialog, QWidget
 
 from shipsim_msgs_module.msg import MMGControl
 
@@ -17,10 +17,14 @@ from shipsim_mmg_module.ShipControllerMMG import Ui_ShipControllerMMG
 class MmgControllerNode(Node):
     """ControllerNode."""
 
-    def __init__(self, timer_period=1.0):
+    def __init__(self):
         """init."""
-        super().__init__("ship_controller")
-        self.publisher_ = self.create_publisher(MMGControl, "ship1/control", 10)
+        super().__init__("controller", namespace="ship1")
+        self.declare_parameter("publish_address", "/ship1/cmd_control")
+        publish_address = (
+            self.get_parameter("publish_address").get_parameter_value().string_value
+        )
+        self.publisher = self.create_publisher(MMGControl, publish_address, 10)
 
 
 class ControllerNodeWorker(QThread):
@@ -46,7 +50,7 @@ class ControllerNodeWorker(QThread):
         while rclpy.ok():
             rclpy.spin_once(self.node)
 
-            self.node.publisher_.publish(self.control_msg)
+            self.node.publisher.publish(self.control_msg)
 
             self.node.get_logger().info(
                 'Publishing: "%s", "%s"'
@@ -64,7 +68,7 @@ class ControllerUi(QDialog):
     def __init__(self, parent=None):
         """init."""
         super(ControllerUi, self).__init__(parent)
-        centralWidget = QWidget(self)          
+        centralWidget = QWidget(self)
         self.ui = Ui_ShipControllerMMG()
         self.ui.setupUi(self)
         self.sampling_freq = float(self.ui.samplingFreqEdit.text())
