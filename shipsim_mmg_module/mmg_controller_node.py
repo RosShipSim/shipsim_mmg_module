@@ -42,6 +42,15 @@ class ControllerNodeWorker(QThread):
         """set_control_msg."""
         self.control_msg = msg
 
+    def listener_callback(self, msg):
+        """listener_callback."""
+        self.node.get_logger().info(
+            'Controller Node heard: n_p="%s", rudder_angle="%s"'
+            % (msg.n_p, msg.rudder_angle_degree)
+        )
+        self.control_msg.n_p = msg.n_p
+        self.control_msg.rudder_angle_degree = msg.rudder_angle_degree
+
     def run(self):
         """run."""
         rclpy.init()
@@ -49,6 +58,10 @@ class ControllerNodeWorker(QThread):
         self.node.create_rate(self.rate)
         while rclpy.ok():
             rclpy.spin_once(self.node)
+
+            self.subscription = self.node.create_subscription(
+                MMGControl, "/ship1/z_test_control", self.listener_callback, 1
+            )
 
             self.node.publisher.publish(self.control_msg)
 

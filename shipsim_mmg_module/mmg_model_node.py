@@ -18,10 +18,12 @@ class MmgModelNode(Node):
     n_p = 0.0
     rudder_angle_degree = 0.0
 
+    psi0 = 0
+
     def __init__(self):
         """init."""
         super().__init__("model", namespace="ship1")
-        self.declare_parameter("ρ", 1.025)
+        self.declare_parameter("ρ", 1025)
 
         # KVLCC2 L7-model
         self.declare_parameter("L", 7.00)
@@ -70,6 +72,12 @@ class MmgModelNode(Node):
         self.declare_parameter("N_vrr", 0.055)
         self.declare_parameter("N_vvv", -0.030)
         self.declare_parameter("N_rrr", -0.013)
+
+        # Disturbance
+        self.declare_parameter("mu_X_D_0", 10.0)
+        self.declare_parameter("sigma_X_D_0", 1.0)
+        self.declare_parameter("mu_Y_D_0", 10.0)
+        self.declare_parameter("sigma_Y_D_0", 1.0)
 
         self.declare_parameter("publish_address", "/ship1/cmd_vel")
         self.declare_parameter("subscribe_address", "/ship1/control_input")
@@ -157,16 +165,22 @@ class MmgModelNode(Node):
         N_vvv = self.get_parameter("N_vvv").value
         N_rrr = self.get_parameter("N_rrr").value
 
+        # 外乱
+        mu_X_D_0 = self.get_parameter("mu_X_D_0").value
+        sigma_X_D_0 = self.get_parameter("sigma_X_D_0").value
+        mu_Y_D_0 = self.get_parameter("mu_Y_D_0").value
+        sigma_Y_D_0 = self.get_parameter("sigma_Y_D_0").value
+
         # MMG計算のためのパラメータ
-        m = nabla*1.025 # 質量
-        m_ = nabla/(0.5*L**2*d) # 質量(無次元化)
+        m = nabla*ρ # 質量
+        m_ = nabla/(0.5*L**2*d) # 質量係数(無次元化)
         mx = mx_*(0.5*ρ*L**2*d) # 付加質量x
         my = my_*(0.5*ρ*L**2*d) # 付加質量y
         Jzz = Jzz_*(0.5*ρ*L**4*d)
         xG_ = xG/L # 無次元化
         xH = xH_*L
         kx = 0.25*L # 慣動半径
-        Izz = m*(0.25*L)**2 # 慣性モーメント[-]
+        Izz = m*(kx)**2 # 慣性モーメント[-]
         η = Dp/HR
         #U = np.sqrt(X[0]**2+(X[1]-X[2]*xG)**2) #合速度(重心周りで考える際にはこちら)
         #β = 0.0 if U==0.0 else np.arcsin(-(X[1]-X[2]*xG)/U) #斜航角(重心周りで考える際にはこちら)
@@ -175,7 +189,7 @@ class MmgModelNode(Node):
         
         v_dash = 0.0 if U==0.0 else v_now/U #無次元化された横方向速度
         r_dash = 0.0 if U==0.0 else r_now*L/U #無次元化された回頭角速度
-        J = 0.0 if n_p==0.0 else (1-wpo)*u_now/(n_p*Dp) #前進常数
+        J = 0.0 if n_p==0.0 else (1-wpo)*u_now/(n_p*Dp) #前進常数F
         K_T = k0+k1*J+k2*J**2 #スラスト係数kx
         v_R = U*γR*(β-lr_*r_dash) #舵に流入する横方向速度成分
         #v_R_ = γR*(β-lr_*r_dash) #無次元化
@@ -186,6 +200,16 @@ class MmgModelNode(Node):
         #α_R_ = X[6] - np.arctan2(v_R_,u_R_) #無次元化
         F_N = 0.5*AR*ρ*fa*(U_R**2)*np.sin(α_R)
         #F_N_ = AR/(L*d)*fa*(u_R_**2+v_R_**2)*np.sin(α_R_) #無次元化
+
+        # 外乱の設定と座標変換
+        X_D_0 = np.random.normal(
+            mu_X_D_0, sigma_X_D_0
+        )
+        Y_D_0 = np.random.normal(
+            mu_Y_D_0, sigma_Y_D_0
+        )
+        X_D = -(X_D_0 * np.sin(self.psi0)) - (Y_D_0 * np.cos(self.psi0))
+        Y_D = -(X_D_0 * np.cos(self.psi0)) + (Y_D_0 * np.sin(self.psi0))
 
         # 力の成分
         X_H = 0.5*ρ*L*d*(U**2)*(-(R_0)+X_vv*v_dash**2+X_vr*v_dash*r_dash+X_rr*r_dash**2+X_vvvv*v_dash**4)
@@ -202,18 +226,25 @@ class MmgModelNode(Node):
         N_R = -(-0.5+aH*xH)*F_N*np.cos(rudder_angle)
         
         # 状態計算
-        u_dot = ((X_H+X_R+X_P)+(m+my)*v_now*r_now+xG*m*r_now**2)/(m+mx)
+        u_dot = ((X_H+X_R+X_P+X_D)+(m+my)*v_now*r_now+xG*m*r_now**2)/(m+mx)
         twist.linear.x = u_now + u_dot * delta_time
 
         #d_v =(Y_H+Y_R-(m+mx)*X[0]*X[2]-xG*m*d_r)/(m+my)
-        v_dot = (xG**2*m**2*u_now*r_now-(N_H+N_R)*xG*m+((Y_H+Y_R)-(m+mx)*u_now*r_now)*(Izz+Jzz+xG**2*m))/((Izz+Jzz+xG**2*m)*(m+my)-xG**2*m**2)
+        v_dot = (xG**2*m**2*u_now*r_now-(N_H+N_R)*xG*m+((Y_H+Y_R+Y_D)-(m+mx)*u_now*r_now)*(Izz+Jzz+xG**2*m))/((Izz+Jzz+xG**2*m)*(m+my)-xG**2*m**2)
         twist.linear.y = v_now + v_dot * delta_time
 
         #d_r = (N_H+N_R-xG*m*(d_v+X[0]*X[2]))/(Izz+Jzz+xG**2*m)
         r_dot = ((N_H+N_R)*(m+my)-xG*m*(Y_H+Y_R-(m+mx)*u_now*r_now)-xG*m*u_now*r_now*(m+my))/((Izz+Jzz+xG**2*m)*(m+my)-xG**2*m**2)
         twist.angular.z = r_now + r_dot * delta_time
 
+        self.psi0 = self.psi0 + (r_now + r_dot * delta_time) * delta_time
+        if self.psi0 > np.pi:
+            self.psi0 = self.psi0 - 2 * np.pi
+        elif self.psi0 < (-np.pi):
+            self.psi0 = self.psi0 + 2 * np.pi
+
         return twist
+
 
     def listener_callback(self, msg):
         """listener_callback."""
