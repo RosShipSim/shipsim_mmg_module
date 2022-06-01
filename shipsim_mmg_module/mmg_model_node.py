@@ -72,7 +72,7 @@ class MmgModelNode(Node):
         self.declare_parameter("N_rrr", -0.013)
 
         self.declare_parameter("publish_address", "/ship1/cmd_vel")
-        self.declare_parameter("subscribe_address", "/ship1/control_input")
+        self.declare_parameter("subscribe_address", "/ship1/cmd_control")
         self.declare_parameter("delta_time", 0.01)
 
         publish_address = (
